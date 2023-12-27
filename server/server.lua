@@ -94,6 +94,11 @@ AddEventHandler('rsg-canteen:server:givefullcanteen', function()
 			TriggerClientEvent('inventory:client:ItemBox', src, RSGCore.Shared.Items['canteen25'], "remove")
 			return
 		end
+		if Player.Functions.RemoveItem('canteen50', 1) then
+			Player.Functions.RemoveItem('canteen50', 1)
+			TriggerClientEvent('inventory:client:ItemBox', src, RSGCore.Shared.Items['canteen50'], "remove")
+			return
+		end
 		if Player.Functions.RemoveItem('canteen75', 1) then
 			Player.Functions.RemoveItem('canteen75', 1)
 			TriggerClientEvent('inventory:client:ItemBox', src, RSGCore.Shared.Items['canteen75'], "remove")
