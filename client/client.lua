@@ -34,8 +34,6 @@ RegisterNetEvent('rsg-canteen:client:fillupcanteen', function()
             if water == Config.WaterTypes[k]["waterhash"]  then
                 if IsPedOnFoot(playerPed) then
                     if IsEntityInWater(playerPed) then
-                        TaskStartScenarioInPlace(playerPed, GetHashKey('WORLD_HUMAN_CROUCH_INSPECT'), -1, true, false, false, false)
-                        Wait(8000)
                         TriggerServerEvent('rsg-canteen:server:givefullcanteen')
                         ClearPedTasks(playerPed)
                     end
@@ -44,4 +42,28 @@ RegisterNetEvent('rsg-canteen:client:fillupcanteen', function()
         end
         isBusy = not isBusy
     end
+end)
+
+-- JoewAlabel Fill Up Canteens at waterpumps too.
+RegisterNetEvent('rsg-canteen:client:fillupcanteenwaterpump', function()
+    if isBusy then
+        return
+    else
+        isBusy = not isBusy
+        local playerPed = PlayerPedId()
+        local coords = GetEntityCoords(playerPed)
+        local water = Citizen.InvokeNative(0x5BA7A68A346A5A91,coords.x+3, coords.y+3, coords.z)
+                if IsPedOnFoot(playerPed) then
+					TriggerServerEvent('rsg-canteen:server:givefullcanteen')        
+                end
+        isBusy = not isBusy
+    end
+end)
+
+-- JoewAlabel Check if have canteen to fill
+RegisterNetEvent('rsg-canteen:client:fillupcanteenwaterpump:havecanteen', function()
+	local playerPed = PlayerPedId()
+    TaskStartScenarioInPlace(playerPed, GetHashKey('WORLD_HUMAN_CROUCH_INSPECT'), -1, true, false, false, false)
+    Wait(8000)
+	ClearPedTasks(playerPed)
 end)

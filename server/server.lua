@@ -74,15 +74,34 @@ RSGCore.Functions.CreateUseableItem("canteen0", function(source, item)
     TriggerClientEvent('rsg-canteen:client:fillupcanteen', src)
 end)
 
--- remove empty give full canteen
+-- remove empty give full canteen -- JoewAlabel - Refills all Canteens, not only empty.
 RegisterServerEvent('rsg-canteen:server:givefullcanteen')
 AddEventHandler('rsg-canteen:server:givefullcanteen', function()
     local src = source
     local Player = RSGCore.Functions.GetPlayer(src)
-    Player.Functions.RemoveItem('canteen0', 1)
-    TriggerClientEvent("inventory:client:ItemBox", src, RSGCore.Shared.Items['canteen0'], "remove")
-    Player.Functions.AddItem('canteen100', 1)
-    TriggerClientEvent("inventory:client:ItemBox", src, RSGCore.Shared.Items['canteen100'], "add")
+	if Player.Functions.RemoveItem('canteen0', 1) or Player.Functions.RemoveItem('canteen25', 1) or Player.Functions.RemoveItem('canteen50', 1) or Player.Functions.RemoveItem('canteen75', 1) then
+		TriggerClientEvent('rsg-canteen:client:fillupcanteenwaterpump:havecanteen', src)
+		Wait(8000)
+		Player.Functions.AddItem('canteen100', 1)
+		TriggerClientEvent("inventory:client:ItemBox", src, RSGCore.Shared.Items['canteen100'], "add")
+		if Player.Functions.RemoveItem('canteen0', 1) then
+			Player.Functions.RemoveItem('canteen0', 1)
+			TriggerClientEvent('inventory:client:ItemBox', src, RSGCore.Shared.Items['canteen0'], "remove")
+			return
+		end
+		if Player.Functions.RemoveItem('canteen25', 1) then
+			Player.Functions.RemoveItem('canteen25', 1)
+			TriggerClientEvent('inventory:client:ItemBox', src, RSGCore.Shared.Items['canteen25'], "remove")
+			return
+		end
+		if Player.Functions.RemoveItem('canteen75', 1) then
+			Player.Functions.RemoveItem('canteen75', 1)
+			TriggerClientEvent('inventory:client:ItemBox', src, RSGCore.Shared.Items['canteen75'], "remove")
+			return
+		end
+	else
+		TriggerClientEvent('ox_lib:notify', src, {title = 'Missing Item', description = "You don't have Canteen to refill!", type = 'error' })
+	end
 end)
 
 --------------------------------------------------------------------------------------------------
