@@ -8,10 +8,10 @@ RegisterNetEvent('rsg-canteen:client:drink', function(amount)
     else
         isBusy = not isBusy
         local ped = PlayerPedId()
-        SetCurrentPedWeapon(PlayerPedId(), GetHashKey("weapon_unarmed"))
+        SetCurrentPedWeapon(PlayerPedId(), joaat('weapon_unarmed'))
         Citizen.Wait(100)
         if not IsPedOnMount(ped) and not IsPedInAnyVehicle(ped) then
-            TaskStartScenarioInPlace(ped, GetHashKey('WORLD_HUMAN_DRINK_FLASK'), -1, true, false, false, false)
+            TaskStartScenarioInPlace(ped, joaat('WORLD_HUMAN_DRINK_FLASK'), -1, true, false, false, false)
         end
         Wait(5000)
         TriggerServerEvent("RSGCore:Server:SetMetaData", "thirst", RSGCore.Functions.GetPlayerData().metadata["thirst"] + amount)
@@ -34,7 +34,7 @@ RegisterNetEvent('rsg-canteen:client:fillupcanteen', function()
             if water == Config.WaterTypes[k]["waterhash"]  then
                 if IsPedOnFoot(playerPed) then
                     if IsEntityInWater(playerPed) then
-                        TaskStartScenarioInPlace(playerPed, GetHashKey('WORLD_HUMAN_CROUCH_INSPECT'), -1, true, false, false, false)
+                        TaskStartScenarioInPlace(playerPed, joaat('WORLD_HUMAN_CROUCH_INSPECT'), -1, true, false, false, false)
                         Wait(8000)
                         TriggerServerEvent('rsg-canteen:server:givefullcanteen')
                         ClearPedTasks(playerPed)

@@ -32,12 +32,3 @@ Config.WaterTypes = {
     [25] =  {["name"] = "Bahia De La Paz",      ["waterhash"] = -1168459546,    ["watertype"] = "sea"},
     [26] =  {["name"] = "Arroyo De La Vibora",  ["waterhash"] = -49694339,      ["watertype"] = "river"},
 }
-
-Config.Animations = {
-    -- Animation dictionary
-    AnimationDictionary = "script_rc@cldn@ig@rsc2_ig1_questionshopkeeper",
-    -- Animation
-    Animation = "inspectfloor_player"
-}
-
-Config.DurationOfFill = 8000 -- In miliseconds
