@@ -7,15 +7,14 @@ RegisterNetEvent('rsg-canteen:client:drink', function(amount)
         return
     else
         isBusy = not isBusy
-        local ped = PlayerPedId()
         SetCurrentPedWeapon(PlayerPedId(), joaat('weapon_unarmed'))
         Citizen.Wait(100)
-        if not IsPedOnMount(ped) and not IsPedInAnyVehicle(ped) then
-            TaskStartScenarioInPlace(ped, joaat('WORLD_HUMAN_DRINK_FLASK'), -1, true, false, false, false)
+        if not IsPedOnMount(cache.ped) and not IsPedInAnyVehicle(cache.ped) then
+            TaskStartScenarioInPlace(cache.ped, joaat('WORLD_HUMAN_DRINK_FLASK'), -1, true, false, false, false)
         end
         Wait(5000)
         TriggerServerEvent("RSGCore:Server:SetMetaData", "thirst", RSGCore.Functions.GetPlayerData().metadata["thirst"] + amount)
-        ClearPedTasks(ped)
+        ClearPedTasks(cache.ped)
         isBusy = not isBusy
     end
 end)
@@ -26,18 +25,17 @@ RegisterNetEvent('rsg-canteen:client:fillupcanteen', function()
         return
     else
         isBusy = not isBusy
-        local playerPed = PlayerPedId()
-        local coords = GetEntityCoords(playerPed)
-        local water = Citizen.InvokeNative(0x5BA7A68A346A5A91,coords.x+3, coords.y+3, coords.z)
+        local coords = GetEntityCoords(cache.ped)
+        local water = GetWaterMapZoneAtCoords(coords.x+3, coords.y+3, coords.z)
 
         for k,v in pairs(Config.WaterTypes) do 
             if water == Config.WaterTypes[k]["waterhash"]  then
-                if IsPedOnFoot(playerPed) then
-                    if IsEntityInWater(playerPed) then
-                        TaskStartScenarioInPlace(playerPed, joaat('WORLD_HUMAN_CROUCH_INSPECT'), -1, true, false, false, false)
+                if IsPedOnFoot(cache.ped) then
+                    if IsEntityInWater(cache.ped) then
+                        TaskStartScenarioInPlace(cache.ped, joaat('WORLD_HUMAN_CROUCH_INSPECT'), -1, true, false, false, false)
                         Wait(8000)
                         TriggerServerEvent('rsg-canteen:server:givefullcanteen')
-                        ClearPedTasks(playerPed)
+                        ClearPedTasks(cache.ped)
                     end
                 end
             end
