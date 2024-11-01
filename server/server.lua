@@ -45,7 +45,9 @@ RSGCore.Functions.CreateUseableItem('canteen25', function(source, item)
     if not Player then return end
     TriggerClientEvent('rsg-canteen:client:drink', src, Config.DrinkAmount, 'canteen25')
     Player.Functions.RemoveItem('canteen25', 1)
+    TriggerClientEvent('rsg-inventory:client:ItemBox', src, RSGCore.Shared.Items['canteen25'], 'remove', 1)
     Player.Functions.AddItem('canteen0', 1)
+    TriggerClientEvent('rsg-inventory:client:ItemBox', src, RSGCore.Shared.Items['canteen0'], 'add', 1)
 end)
 
 ------------------------
