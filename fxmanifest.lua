@@ -3,7 +3,7 @@ rdr3_warning 'I acknowledge that this is a prerelease build of RedM, and I am aw
 game 'rdr3'
 
 description 'rsg-canteen'
-version '1.0.8'
+version '2.0.0'
 
 shared_scripts {
     '@ox_lib/init.lua',
@@ -21,6 +21,10 @@ server_scripts {
 
 dependencies {
     'rsg-core',
+}
+
+files {
+  'locales/*.json'
 }
 
 lua54 'yes'

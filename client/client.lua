@@ -1,6 +1,7 @@
 local RSGCore = exports['rsg-core']:GetCoreObject()
 local isBusy = false
 local entity = nil
+lib.locale()
 
 ------------------------
 -- function load model
@@ -18,7 +19,7 @@ end
 RegisterNetEvent('rsg-canteen:client:drink', function(amount, item)
     if isBusy then return end
     if item == 'canteen0' then
-        lib.notify({ title = 'Canteen Empty', description = 'you need to fill up your canteen first!', type = 'error', duration = 7000 })
+        lib.notify({ title = locale('cl_lang_1'), description = locale('cl_lang_2'), type = 'error', duration = 7000 })
         return
     end
     isBusy = true
