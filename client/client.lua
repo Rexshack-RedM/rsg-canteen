@@ -46,7 +46,7 @@ RegisterNetEvent('rsg-canteen:client:drink', function(amount, item)
         TaskPlayAnim(cache.ped, dict, anim, 1.0, 1.0, -1, 31, 1.0, false, false, false)
     end
     Wait(5000)
-    TriggerServerEvent("RSGCore:Server:SetMetaData", "thirst", RSGCore.Functions.GetPlayerData().metadata["thirst"] + amount)
+    TriggerEvent('hud:client:UpdateThirst', LocalPlayer.state.thirst + amount)
     ClearPedTasks(cache.ped)
     if entity then
         DeleteObject(entity)
