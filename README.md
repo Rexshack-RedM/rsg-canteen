@@ -25,8 +25,9 @@
 - 🔄 **Tiered items:** `canteen100` → `canteen75` → `canteen50` → `canteen25` → `canteen0`.  
 - 🥤 **Drink effect:** increases thirst by `Config.DrinkAmount` and plays an animation with a visible canteen prop.  
 - 🚫 **Empty check:** using `canteen0` shows a localized “Canteen Empty” error.  
-- ♻️ **Refill hook:** server event `rsg-canteen:server:givefullcanteen` converts `canteen0` → `canteen100`.  
-- 🌊 **WaterTypes table:** names/hashes of seas, lakes and rivers (for external checks/integration).  
+- ♻️ **Refill hook:** server event `rsg-canteen:server:refillcanteen` converts `canteen0` → `canteen100`.  
+- 🌊 **WaterTypes table:** names/hashes of seas, lakes and rivers (for external checks/integration).
+  - **By Default** all water with a hashname in this table will allow you to refill any canteen that is item canteen0, canteen25, canteen50 and canteen75
 - 🌍 **Multi-language** via `lib.locale()`.
 
 ---
@@ -50,18 +51,44 @@ Config.WaterTypes = {
 ---
 
 ## 🔁 How it works
-- Server registers all canteen items as **usable**.  
-- On use: server triggers `rsg-canteen:client:drink(amount, item)` and swaps the item to the **next lower tier**.  
-- Client plays a short **drink animation**, spawns a canteen prop and calls:  
-  ```lua
-  TriggerEvent('hud:client:UpdateThirst', LocalPlayer.state.thirst + amount)
-  ```
-- If the item used is `canteen0`, client shows localized error instead of drinking.  
-- To refill, call the server event:
-  ```lua
-  TriggerServerEvent('rsg-canteen:server:givefullcanteen')
-  ```
-  which removes `canteen0` and gives `canteen100` (with Inventory ItemBox feedback).
+
+- Server registers all canteen items as usable:
+ ```lua
+RSGCore.Functions.CreateUseableItem('canteen75', function(source, item)
+    TriggerClientEvent('rsg-canteen:client:drink', source, Config.DrinkAmount, 'canteen75')
+end)
+```
+
+- On use: server triggers the client event `rsg-canteen:client:drink(amount, item)`
+- No inventory changes happen at this stage.
+
+- Client plays a short drink animation, spawns a canteen prop, and evaluates:
+    - If the canteen is refillable (canteen0, 25, 50, 75) and the player is in valid water,
+      it triggers a refill to canteen100.
+    - If not in water or using a non-refillable canteen, it triggers a downgrade to the next lower tier.
+    - If the item is canteen0 and the player is not in valid water, client shows a localized error
+      and blocks thirst gain.
+
+- Thirst is only updated if the canteen is successfully refilled or degraded:
+```lua
+TriggerEvent('hud:client:UpdateThirst', LocalPlayer.state.thirst + amount)
+```
+- To refill, the client triggers one of the following server events:
+```lua
+TriggerServerEvent('rsg-canteen:server:givefullcanteen')      -- from canteen0
+TriggerServerEvent('rsg-canteen:server:givefullcanteen25')   -- from canteen25
+TriggerServerEvent('rsg-canteen:server:givefullcanteen50')   -- from canteen50
+TriggerServerEvent('rsg-canteen:server:givefullcanteen75')   -- from canteen75
+```
+- Each removes the partial canteen and gives canteen100, with Inventory ItemBox feedback.
+
+- External scripts can refill any canteen tier using:
+```lua
+TriggerServerEvent('rsg-canteen:server:refillcanteen', 'canteen25')
+```
+
+- This performs the same logic as above and is safe to call from outside this resource.
+
 
 ---
 
