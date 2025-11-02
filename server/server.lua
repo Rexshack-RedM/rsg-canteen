@@ -8,8 +8,6 @@ RSGCore.Functions.CreateUseableItem('canteen100', function(source, item)
     local Player = RSGCore.Functions.GetPlayer(src)
     if not Player then return end
     TriggerClientEvent('rsg-canteen:client:drink', src, Config.DrinkAmount, 'canteen100')
-    Player.Functions.RemoveItem('canteen100', 1)
-    Player.Functions.AddItem('canteen75', 1)
 end)
 
 ------------------------
@@ -20,8 +18,6 @@ RSGCore.Functions.CreateUseableItem('canteen75', function(source, item)
     local Player = RSGCore.Functions.GetPlayer(src)
     if not Player then return end
     TriggerClientEvent('rsg-canteen:client:drink', src, Config.DrinkAmount, 'canteen75')
-    Player.Functions.RemoveItem('canteen75', 1)
-    Player.Functions.AddItem('canteen50', 1)
 end)
 
 ------------------------
@@ -32,8 +28,6 @@ RSGCore.Functions.CreateUseableItem('canteen50', function(source, item)
     local Player = RSGCore.Functions.GetPlayer(src)
     if not Player then return end
     TriggerClientEvent('rsg-canteen:client:drink', src, Config.DrinkAmount, 'canteen50')
-    Player.Functions.RemoveItem('canteen50', 1)
-    Player.Functions.AddItem('canteen25', 1)
 end)
 
 ------------------------
@@ -44,10 +38,6 @@ RSGCore.Functions.CreateUseableItem('canteen25', function(source, item)
     local Player = RSGCore.Functions.GetPlayer(src)
     if not Player then return end
     TriggerClientEvent('rsg-canteen:client:drink', src, Config.DrinkAmount, 'canteen25')
-    Player.Functions.RemoveItem('canteen25', 1)
-    TriggerClientEvent('rsg-inventory:client:ItemBox', src, RSGCore.Shared.Items['canteen25'], 'remove', 1)
-    Player.Functions.AddItem('canteen0', 1)
-    TriggerClientEvent('rsg-inventory:client:ItemBox', src, RSGCore.Shared.Items['canteen0'], 'add', 1)
 end)
 
 ------------------------
@@ -56,20 +46,97 @@ end)
 RSGCore.Functions.CreateUseableItem('canteen0', function(source, item)
     local src = source
     local Player = RSGCore.Functions.GetPlayer(src)
+	TriggerClientEvent('rsg-canteen:client:fillupcanteen', src)
     if not Player then return end
     TriggerClientEvent('rsg-canteen:client:drink', src, Config.DrinkAmount, 'canteen0')
 end)
 
 ------------------------
--- give full canteen
+-- Refill Handler
+------------------------
+local function RefillCanteen(src, fromItem)
+    local Player = RSGCore.Functions.GetPlayer(src)
+    if not Player then return end
+    Player.Functions.RemoveItem(fromItem, 1)
+    TriggerClientEvent('rsg-inventory:client:ItemBox', src, RSGCore.Shared.Items[fromItem], 'remove', 1)
+    Player.Functions.AddItem('canteen100', 1)
+    TriggerClientEvent('rsg-inventory:client:ItemBox', src, RSGCore.Shared.Items['canteen100'], 'add', 1)
+end
+
+------------------------
+-- give full canteen from 0
 ------------------------
 RegisterServerEvent('rsg-canteen:server:givefullcanteen')
 AddEventHandler('rsg-canteen:server:givefullcanteen', function()
+    RefillCanteen(source, 'canteen0')
+end)
+
+------------------------
+-- give full canteen from 25
+------------------------
+RegisterServerEvent('rsg-canteen:server:givefullcanteen25')
+AddEventHandler('rsg-canteen:server:givefullcanteen25', function()
+    RefillCanteen(source, 'canteen25')
+end)
+
+------------------------
+-- give full canteen from 50
+------------------------
+RegisterServerEvent('rsg-canteen:server:givefullcanteen50')
+AddEventHandler('rsg-canteen:server:givefullcanteen50', function()
+    RefillCanteen(source, 'canteen50')
+end)
+
+------------------------
+-- give full canteen from 75
+------------------------
+RegisterServerEvent('rsg-canteen:server:givefullcanteen75')
+AddEventHandler('rsg-canteen:server:givefullcanteen75', function()
+    RefillCanteen(source, 'canteen75')
+end)
+
+------------------------
+-- Handle degrade logic
+------------------------
+RegisterServerEvent('rsg-canteen:server:degradecanteen')
+AddEventHandler('rsg-canteen:server:degradecanteen', function(item)
     local src = source
     local Player = RSGCore.Functions.GetPlayer(src)
     if not Player then return end
-    Player.Functions.RemoveItem('canteen0', 1)
-    TriggerClientEvent('rsg-inventory:client:ItemBox', src, RSGCore.Shared.Items['canteen0'], 'remove', 1)
-    Player.Functions.AddItem('canteen100', 1)
-    TriggerClientEvent('rsg-inventory:client:ItemBox', src, RSGCore.Shared.Items['canteen100'], 'add', 1)
+
+    local downgradeMap = {
+        canteen100 = 'canteen75',
+        canteen75 = 'canteen50',
+        canteen50 = 'canteen25',
+        canteen25 = 'canteen0'
+    }
+
+    local nextItem = downgradeMap[item]
+    if not nextItem then return end
+
+    Player.Functions.RemoveItem(item, 1)
+    TriggerClientEvent('rsg-inventory:client:ItemBox', src, RSGCore.Shared.Items[item], 'remove', 1)
+    Player.Functions.AddItem(nextItem, 1)
+    TriggerClientEvent('rsg-inventory:client:ItemBox', src, RSGCore.Shared.Items[nextItem], 'add', 1)
+end)
+
+------------------------
+-- External Refill Entry Point
+------------------------
+RegisterServerEvent('rsg-canteen:server:refillcanteen')
+AddEventHandler('rsg-canteen:server:refillcanteen', function(fromItem)
+    local src = source
+    local valid = {
+        canteen0 = true,
+        canteen25 = true,
+        canteen50 = true,
+        canteen75 = true
+    }
+
+    if not valid[fromItem] then
+        print(('[rsg-canteen] Invalid refill attempt from item: %s'):format(fromItem))
+        return
+    end
+
+    RefillCanteen(src, fromItem)
 end)
