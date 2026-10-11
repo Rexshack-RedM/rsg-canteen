@@ -1,4 +1,4 @@
 {
-    "cl_lang_1": "Gourde vide",
-    "cl_lang_2": "Vous devez d'abord remplir votre gourde!"
+    "canteen_empty_title": "Gourde vide",
+    "canteen_empty_desc": "Tu dois d'abord remplir ta gourde !"
 }

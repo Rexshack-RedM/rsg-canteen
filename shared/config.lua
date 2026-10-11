@@ -3,7 +3,8 @@ Config = {}
 ------------------------
 -- settings
 ------------------------
-Config.DrinkAmount = 25 -- amount of water increase per drink
+Config.DrinkAmount  = 25  -- thirst restored when drinking from a canteen
+Config.RefillThirst = 100 -- thirst restored when refilling (and drinking) at valid water
 
 ------------------------
 -- water types config

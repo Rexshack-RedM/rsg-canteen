@@ -1,4 +1,4 @@
 {
-    "cl_lang_1" : "Borraccia Vuota",
-    "cl_lang_2" : "devi prima riempire la tua borraccia!"
+    "canteen_empty_title": "Borraccia vuota",
+    "canteen_empty_desc": "Devi prima riempire la tua borraccia!"
 }

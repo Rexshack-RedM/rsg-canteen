@@ -1,123 +1,79 @@
-local RSGCore = exports['rsg-core']:GetCoreObject()
 local isBusy = false
-local entity = nil
 lib.locale()
 
-------------------------
--- function load model
-------------------------
-local function LoadModel(modelHash)
-    RequestModel(modelHash)
-    while not HasModelLoaded(modelHash) do
-        Wait(100)
-    end
+local VALID_WATER = {}
+for _, v in ipairs(Config.WaterTypes) do VALID_WATER[v.waterhash] = true end
+
+local REFILLABLE = { canteen0 = true, canteen25 = true, canteen50 = true, canteen75 = true }
+
+local DRINK_DICT = 'amb_rest_drunk@world_human_drinking@female_a@idle_a'
+local PROP_MODEL = joaat('p_cs_canteen_hercule')
+
+local function InValidWater(ped)
+    if not IsEntityInWater(ped) or not IsPedOnFoot(ped) then return false end
+    local c = GetEntityCoords(ped)
+    return VALID_WATER[GetWaterMapZoneAtCoords(c.x, c.y, c.z)] == true
+end
+
+local function NotifyEmpty()
+    lib.notify({ title = locale('canteen_empty_title'), description = locale('canteen_empty_desc'), type = 'error', duration = 7000 })
 end
 
 ------------------------
--- drink water from flask
+-- use canteen (triggered by server on item use)
 ------------------------
-RegisterNetEvent('rsg-canteen:client:drink', function(amount, item)
-    if isBusy then return end
+RegisterNetEvent('rsg-canteen:client:drink', function(item)
+    local ped = cache.ped
+    if isBusy or IsEntityDead(ped) then
+        return TriggerServerEvent('rsg-canteen:server:finish', 'cancel')
+    end
+
+    local refill = REFILLABLE[item] and InValidWater(ped)
+
+    -- empty canteen and no water to fill it from
+    if item == 'canteen0' and not refill then
+        NotifyEmpty()
+        return TriggerServerEvent('rsg-canteen:server:finish', 'cancel')
+    end
+
     isBusy = true
+    SetCurrentPedWeapon(ped, joaat('weapon_unarmed'), true)
 
-    local coords = GetEntityCoords(cache.ped)
-    local water = GetWaterMapZoneAtCoords(coords.x + 3, coords.y + 3, coords.z)
-    local isValidWater = false
-    local refillable = item == 'canteen0' or item == 'canteen25' or item == 'canteen50' or item == 'canteen75'
+    local prop
+    if not IsPedOnMount(ped) and not IsPedInAnyVehicle(ped, false) then
+        lib.requestModel(PROP_MODEL)
+        local coords = GetEntityCoords(ped)
+        prop = CreateObject(PROP_MODEL, coords.x, coords.y, coords.z, true, false, false)
+        SetModelAsNoLongerNeeded(PROP_MODEL)
+        AttachEntityToEntity(prop, ped, GetEntityBoneIndexByName(ped, 'SKEL_R_HAND'),
+            0.10, 0.09, -0.05, 306.0, 18.0, 0.0, true, true, false, true, 2, true)
 
-    for _, v in pairs(Config.WaterTypes) do
-        if water == v.waterhash then
-            isValidWater = true
-            break
-        end
-    end
-
-    -- Early block: prevent drinking from empty canteen in invalid water
-    if item == 'canteen0' and (not isValidWater or not IsEntityInWater(cache.ped)) then
-        lib.notify({
-            title = locale('cl_lang_1'),
-            description = locale('cl_lang_2'),
-            type = 'error',
-            duration = 7000
-        })
-        isBusy = false
-        return
-    end
-
-    -- Animation setup
-    SetCurrentPedWeapon(cache.ped, joaat('weapon_unarmed'))
-    Wait(100)
-
-    if not IsPedOnMount(cache.ped) and not IsPedInAnyVehicle(cache.ped) then
-        local dict = 'amb_rest_drunk@world_human_drinking@female_a@idle_a'
-        local anim = 'idle_a'
-        local boneIndex = GetEntityBoneIndexByName(cache.ped, 'SKEL_R_HAND')
-        local modelHash = GetHashKey('p_cs_canteen_hercule')
-
-        LoadModel(modelHash)
-        entity = CreateObject(modelHash, coords.x + 0.3, coords.y, coords.z, true, false, false)
-        SetEntityVisible(entity, true)
-        SetEntityAlpha(entity, 255, false)
-        Citizen.InvokeNative(0x283978A15512B2FE, entity, true)
-        SetModelAsNoLongerNeeded(modelHash)
-        AttachEntityToEntity(entity, cache.ped, boneIndex, 0.10, 0.09, -0.05, 306.0, 18.0, 0.0, true, true, false, true, 2, true)
-
-        if isValidWater and refillable and IsPedOnFoot(cache.ped) and IsEntityInWater(cache.ped) then
-            TaskStartScenarioInPlace(cache.ped, joaat('WORLD_HUMAN_CROUCH_INSPECT'), -1, true, false, false, false)
+        if refill then
+            TaskStartScenarioInPlace(ped, joaat('WORLD_HUMAN_CROUCH_INSPECT'), -1, true, false, false, false)
             Wait(8000)
-            ClearPedTasks(cache.ped)
+            ClearPedTasks(ped)
         end
 
-        RequestAnimDict(dict)
-        while not HasAnimDictLoaded(dict) do
-            Citizen.Wait(100)
-        end
-        TaskPlayAnim(cache.ped, dict, anim, 1.0, 1.0, -1, 31, 1.0, false, false, false)
+        lib.requestAnimDict(DRINK_DICT)
+        TaskPlayAnim(ped, DRINK_DICT, 'idle_a', 1.0, 1.0, -1, 31, 1.0, false, false, false)
+        RemoveAnimDict(DRINK_DICT)
     end
 
     Wait(5000)
 
-    -- Decision logic: refill, degrade, or block
-    local inWater = IsEntityInWater(cache.ped)
-    local shouldRefill = isValidWater and refillable and inWater
-    local shouldDegrade = not refillable or not inWater
+    -- re-check water at the end so walking out mid-animation doesn't count
+    if refill and not InValidWater(ped) then refill = false end
 
-    if shouldRefill then
-        TriggerServerEvent("RSGCore:Server:SetMetaData", "thirst", RSGCore.Functions.GetPlayerData().metadata["thirst"] + 100)
-
-        if item == 'canteen0' then
-            TriggerServerEvent('rsg-canteen:server:givefullcanteen')
-        elseif item == 'canteen25' then
-            TriggerServerEvent('rsg-canteen:server:givefullcanteen25')
-        elseif item == 'canteen50' then
-            TriggerServerEvent('rsg-canteen:server:givefullcanteen50')
-        elseif item == 'canteen75' then
-            TriggerServerEvent('rsg-canteen:server:givefullcanteen75')
-        end
-
-        TriggerEvent('hud:client:UpdateThirst', LocalPlayer.state.thirst + amount)
-
-    elseif shouldDegrade then
-        TriggerServerEvent('rsg-canteen:server:degradecanteen', item)
-        TriggerEvent('hud:client:UpdateThirst', LocalPlayer.state.thirst + amount)
-
+    if refill then
+        TriggerServerEvent('rsg-canteen:server:finish', 'refill')
+    elseif item ~= 'canteen0' then
+        TriggerServerEvent('rsg-canteen:server:finish', 'drink')
     else
-        -- This case: refillable canteen, not in water, no degrade
-        if item == 'canteen0' then
-            lib.notify({
-                title = locale('cl_lang_1'),
-                description = locale('cl_lang_2'),
-                type = 'error',
-                duration = 7000
-            })
-        end
+        NotifyEmpty()
+        TriggerServerEvent('rsg-canteen:server:finish', 'cancel')
     end
 
-    -- Cleanup
-    ClearPedTasks(cache.ped)
-    if entity then
-        DeleteObject(entity)
-        entity = nil
-    end
+    ClearPedTasks(ped)
+    if prop and DoesEntityExist(prop) then DeleteObject(prop) end
     isBusy = false
 end)

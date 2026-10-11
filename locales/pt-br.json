@@ -1,4 +1,4 @@
 {
-    "cl_lang_1" : "Cantil Vazio",
-    "cl_lang_2" : "você precisa encher seu cantil primeiro!"
+    "canteen_empty_title": "Cantil vazio",
+    "canteen_empty_desc": "Você precisa encher seu cantil primeiro!"
 }
