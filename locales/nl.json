@@ -9,5 +9,6 @@
     "canteen_filled": "Veldfles gevuld (%s keer te gebruiken)",
     "drank": "Je hebt gedronken (nog %s/%s keer over)",
     "too_far": "Je bent te ver van de pomp",
-    "busy": "Je bent bezig"
+    "busy": "Je bent bezig",
+    "target_fill_water": "Veldfles vullen"
 }

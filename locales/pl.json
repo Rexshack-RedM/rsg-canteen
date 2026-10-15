@@ -9,5 +9,6 @@
     "canteen_filled": "Manierka napełniona (%s użyć)",
     "drank": "Napiłeś się (pozostało %s/%s użyć)",
     "too_far": "Jesteś za daleko od pompy",
-    "busy": "Jesteś zajęty"
+    "busy": "Jesteś zajęty",
+    "target_fill_water": "Napełnij manierkę"
 }

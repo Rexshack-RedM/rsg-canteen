@@ -4,8 +4,8 @@ game 'rdr3'
 lua54 'yes'
 
 author 'Rexshack'
-description 'rsg-canteen - fill your canteen at water pumps and drink from it'
-version '3.0.1'
+description 'rsg-canteen'
+version '3.0.2'
 
 shared_scripts {
     '@ox_lib/init.lua',

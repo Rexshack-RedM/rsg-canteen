@@ -9,5 +9,6 @@
     "canteen_filled": "Gourde remplie (%s utilisations)",
     "drank": "Vous avez bu (%s/%s utilisations restantes)",
     "too_far": "Vous êtes trop loin de la pompe",
-    "busy": "Vous êtes occupé"
+    "busy": "Vous êtes occupé",
+    "target_fill_water": "Remplir la gourde"
 }

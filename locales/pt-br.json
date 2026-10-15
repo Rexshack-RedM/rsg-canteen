@@ -9,5 +9,6 @@
     "canteen_filled": "Cantil cheio (%s usos)",
     "drank": "Você bebeu (restam %s/%s usos)",
     "too_far": "Você está muito longe da bomba",
-    "busy": "Você está ocupado"
+    "busy": "Você está ocupado",
+    "target_fill_water": "Encher cantil"
 }

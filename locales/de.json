@@ -9,5 +9,6 @@
     "canteen_filled": "Feldflasche gefüllt (%s Anwendungen)",
     "drank": "Du hast getrunken (%s/%s Anwendungen übrig)",
     "too_far": "Du bist zu weit von der Pumpe entfernt",
-    "busy": "Du bist beschäftigt"
+    "busy": "Du bist beschäftigt",
+    "target_fill_water": "Feldflasche füllen"
 }

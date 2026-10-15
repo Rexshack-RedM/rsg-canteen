@@ -94,10 +94,11 @@ end)
 ---------------------------------
 -- fill
 ---------------------------------
-lib.callback.register('rsg-canteen:server:startFill', function(source, pumpCoords)
+lib.callback.register('rsg-canteen:server:startFill', function(source, pumpCoords, fromWater)
     local src = source
     local Player = RSGCore.Functions.GetPlayer(src)
     if not Player or pending[src] or type(pumpCoords) ~= 'vector3' then return false end
+    if fromWater and not Config.WaterFill.Enabled then return false end
 
     if #(playerCoords(src) - pumpCoords) > MAX_PUMP_DIST then
         notify(src, locale('too_far'), 'error')

@@ -9,5 +9,6 @@
     "canteen_filled": "Bidon umplut (%s utilizări)",
     "drank": "Ai băut (au rămas %s/%s utilizări)",
     "too_far": "Ești prea departe de pompă",
-    "busy": "Ești ocupat"
+    "busy": "Ești ocupat",
+    "target_fill_water": "Umple bidonul"
 }

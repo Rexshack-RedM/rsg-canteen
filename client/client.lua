@@ -82,6 +82,68 @@ exports.ox_target:addModel(Config.PumpModels, {
 })
 
 ---------------------------------
+-- fill at river / lake
+---------------------------------
+local waterPrompt
+
+local function inFillableWater()
+    local ped = cache.ped
+    if not IsEntityInWater(ped) or IsPedSwimming(ped) or IsPedOnMount(ped) or IsPedInAnyVehicle(ped, false) then
+        return false
+    end
+    local zones = Config.WaterFill.AllowedZones
+    if #zones == 0 then return true end
+    local c = GetEntityCoords(ped)
+    local zone = Citizen.InvokeNative(0x5BA7A68A346A5A91, c.x, c.y, c.z) -- GetWaterMapZoneAtCoords
+    for i = 1, #zones do
+        if zones[i] == zone then return true end
+    end
+    return false
+end
+
+local function fillFromWater()
+    if busy then return end
+    busy = true
+
+    local ok = lib.callback.await('rsg-canteen:server:startFill', false, GetEntityCoords(cache.ped), true)
+    if ok then
+        playAnim(Config.FillAnim, Config.FillTime)
+        local done = progress(locale('progress_fill'), Config.FillTime, true)
+        ClearPedTasks(cache.ped)
+        TriggerServerEvent('rsg-canteen:server:finishFill', done and inFillableWater())
+    end
+
+    busy = false
+end
+
+if Config.WaterFill.Enabled then
+    CreateThread(function()
+        waterPrompt = PromptRegisterBegin()
+        PromptSetControlAction(waterPrompt, Config.WaterFill.Key)
+        PromptSetText(waterPrompt, VarString(10, 'LITERAL_STRING', locale('target_fill_water')))
+        PromptSetEnabled(waterPrompt, true)
+        PromptSetVisible(waterPrompt, false)
+        PromptSetHoldMode(waterPrompt, true)
+        PromptRegisterEnd(waterPrompt)
+
+        while true do
+            local show = not busy and inFillableWater() and RSGCore.Functions.HasItem(Config.CanteenItem, 1)
+            PromptSetVisible(waterPrompt, show)
+            if show then
+                while not busy and inFillableWater() do
+                    if PromptHasHoldModeCompleted(waterPrompt) then
+                        fillFromWater()
+                    end
+                    Wait(0)
+                end
+                PromptSetVisible(waterPrompt, false)
+            end
+            Wait(Config.WaterFill.CheckEvery)
+        end
+    end)
+end
+
+---------------------------------
 -- drink
 ---------------------------------
 RegisterNetEvent('rsg-canteen:client:drink', function()
@@ -108,4 +170,5 @@ AddEventHandler('onResourceStop', function(res)
     if res ~= GetCurrentResourceName() then return end
     exports.ox_target:removeModel(Config.PumpModels, 'rsg_canteen_fill')
     removeProp()
+    if waterPrompt then PromptDelete(waterPrompt) end
 end)
