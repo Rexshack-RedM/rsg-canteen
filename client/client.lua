@@ -1,79 +1,111 @@
-local isBusy = false
+local RSGCore = exports['rsg-core']:GetCoreObject()
 lib.locale()
 
-local VALID_WATER = {}
-for _, v in ipairs(Config.WaterTypes) do VALID_WATER[v.waterhash] = true end
+local busy = false
+local heldProp = nil
 
-local REFILLABLE = { canteen0 = true, canteen25 = true, canteen50 = true, canteen75 = true }
-
-local DRINK_DICT = 'amb_rest_drunk@world_human_drinking@female_a@idle_a'
-local PROP_MODEL = joaat('p_cs_canteen_hercule')
-
-local function InValidWater(ped)
-    if not IsEntityInWater(ped) or not IsPedOnFoot(ped) then return false end
-    local c = GetEntityCoords(ped)
-    return VALID_WATER[GetWaterMapZoneAtCoords(c.x, c.y, c.z)] == true
+---------------------------------
+-- helpers
+---------------------------------
+local function playAnim(anim, duration)
+    if not DoesAnimDictExist(anim.dict) then
+        print(('[rsg-canteen] invalid anim dict: %s'):format(anim.dict))
+        return
+    end
+    lib.requestAnimDict(anim.dict)
+    TaskPlayAnim(cache.ped, anim.dict, anim.clip, 8.0, -8.0, duration, 1, 0, false, false, false)
+    RemoveAnimDict(anim.dict)
 end
 
-local function NotifyEmpty()
-    lib.notify({ title = locale('canteen_empty_title'), description = locale('canteen_empty_desc'), type = 'error', duration = 7000 })
+local function removeProp()
+    if heldProp and DoesEntityExist(heldProp) then
+        DeleteObject(heldProp)
+    end
+    heldProp = nil
 end
 
-------------------------
--- use canteen (triggered by server on item use)
-------------------------
-RegisterNetEvent('rsg-canteen:client:drink', function(item)
-    local ped = cache.ped
-    if isBusy or IsEntityDead(ped) then
-        return TriggerServerEvent('rsg-canteen:server:finish', 'cancel')
+local function attachProp()
+    local model = joaat(Config.CanteenProp)
+    if not IsModelValid(model) then
+        print(('[rsg-canteen] invalid prop model: %s'):format(Config.CanteenProp))
+        return
+    end
+    lib.requestModel(model)
+    local coords = GetEntityCoords(cache.ped)
+    heldProp = CreateObject(model, coords.x, coords.y, coords.z + 0.2, true, true, false, false, true)
+    local bone = GetEntityBoneIndexByName(cache.ped, Config.PropBone)
+    local o, r = Config.PropOffset, Config.PropRotation
+    AttachEntityToEntity(heldProp, cache.ped, bone, o.x, o.y, o.z, r.x, r.y, r.z, true, true, false, true, 1, true)
+    SetModelAsNoLongerNeeded(model)
+end
+
+local function progress(label, duration, disableMove)
+    return lib.progressBar({
+        duration = duration,
+        label = label,
+        useWhileDead = false,
+        canCancel = true,
+        disable = { move = disableMove, car = true, combat = true },
+    })
+end
+
+---------------------------------
+-- fill at pump
+---------------------------------
+local function fillCanteen(data)
+    if busy then return end
+    busy = true
+
+    local pumpCoords = GetEntityCoords(data.entity)
+    local ok = lib.callback.await('rsg-canteen:server:startFill', false, pumpCoords)
+    if ok then
+        playAnim(Config.FillAnim, Config.FillTime)
+        local done = progress(locale('progress_fill'), Config.FillTime, true)
+        ClearPedTasks(cache.ped)
+        TriggerServerEvent('rsg-canteen:server:finishFill', done)
     end
 
-    local refill = REFILLABLE[item] and InValidWater(ped)
+    busy = false
+end
 
-    -- empty canteen and no water to fill it from
-    if item == 'canteen0' and not refill then
-        NotifyEmpty()
-        return TriggerServerEvent('rsg-canteen:server:finish', 'cancel')
+exports.ox_target:addModel(Config.PumpModels, {
+    {
+        name = 'rsg_canteen_fill',
+        icon = 'fa-solid fa-bottle-water',
+        label = locale('target_fill'),
+        distance = Config.TargetDistance,
+        canInteract = function()
+            return not busy and RSGCore.Functions.HasItem(Config.CanteenItem, 1)
+        end,
+        onSelect = fillCanteen,
+    }
+})
+
+---------------------------------
+-- drink
+---------------------------------
+RegisterNetEvent('rsg-canteen:client:drink', function()
+    if busy then
+        TriggerServerEvent('rsg-canteen:server:finishDrink', false)
+        return
     end
+    busy = true
 
-    isBusy = true
-    SetCurrentPedWeapon(ped, joaat('weapon_unarmed'), true)
+    attachProp()
+    playAnim(Config.DrinkAnim, Config.DrinkTime)
+    local done = progress(locale('progress_drink'), Config.DrinkTime, false)
+    ClearPedTasks(cache.ped)
+    removeProp()
 
-    local prop
-    if not IsPedOnMount(ped) and not IsPedInAnyVehicle(ped, false) then
-        lib.requestModel(PROP_MODEL)
-        local coords = GetEntityCoords(ped)
-        prop = CreateObject(PROP_MODEL, coords.x, coords.y, coords.z, true, false, false)
-        SetModelAsNoLongerNeeded(PROP_MODEL)
-        AttachEntityToEntity(prop, ped, GetEntityBoneIndexByName(ped, 'SKEL_R_HAND'),
-            0.10, 0.09, -0.05, 306.0, 18.0, 0.0, true, true, false, true, 2, true)
+    TriggerServerEvent('rsg-canteen:server:finishDrink', done)
+    busy = false
+end)
 
-        if refill then
-            TaskStartScenarioInPlace(ped, joaat('WORLD_HUMAN_CROUCH_INSPECT'), -1, true, false, false, false)
-            Wait(8000)
-            ClearPedTasks(ped)
-        end
-
-        lib.requestAnimDict(DRINK_DICT)
-        TaskPlayAnim(ped, DRINK_DICT, 'idle_a', 1.0, 1.0, -1, 31, 1.0, false, false, false)
-        RemoveAnimDict(DRINK_DICT)
-    end
-
-    Wait(5000)
-
-    -- re-check water at the end so walking out mid-animation doesn't count
-    if refill and not InValidWater(ped) then refill = false end
-
-    if refill then
-        TriggerServerEvent('rsg-canteen:server:finish', 'refill')
-    elseif item ~= 'canteen0' then
-        TriggerServerEvent('rsg-canteen:server:finish', 'drink')
-    else
-        NotifyEmpty()
-        TriggerServerEvent('rsg-canteen:server:finish', 'cancel')
-    end
-
-    ClearPedTasks(ped)
-    if prop and DoesEntityExist(prop) then DeleteObject(prop) end
-    isBusy = false
+---------------------------------
+-- cleanup
+---------------------------------
+AddEventHandler('onResourceStop', function(res)
+    if res ~= GetCurrentResourceName() then return end
+    exports.ox_target:removeModel(Config.PumpModels, 'rsg_canteen_fill')
+    removeProp()
 end)

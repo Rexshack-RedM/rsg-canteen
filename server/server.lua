@@ -1,88 +1,146 @@
 local RSGCore = exports['rsg-core']:GetCoreObject()
+lib.locale()
 
--- next tier when drinking (canteen0 cannot be drunk from)
-local DEGRADE = {
-    canteen100 = 'canteen75',
-    canteen75  = 'canteen50',
-    canteen50  = 'canteen25',
-    canteen25  = 'canteen0',
-}
+-- server-side action state: [src] = { type, slot?, coords?, started }
+local pending = {}
+local MAX_PUMP_DIST = Config.TargetDistance + 1.5
+local TIME_GRACE = 500 -- ms allowed under the progress duration
 
--- tiers that can be topped up to canteen100
-local REFILLABLE = {
-    canteen0  = true,
-    canteen25 = true,
-    canteen50 = true,
-    canteen75 = true,
-}
-
-local PENDING_TIMEOUT = 30 -- seconds a use stays valid while the client animates
-local pending = {}         -- [src] = { item = name, time = os.time() }
-
-------------------------
+---------------------------------
 -- helpers
-------------------------
-local function SwapItem(src, fromItem, toItem, reason)
-    if not exports['rsg-inventory']:RemoveItem(src, fromItem, 1, nil, reason) then return false end
-    TriggerClientEvent('rsg-inventory:client:ItemBox', src, RSGCore.Shared.Items[fromItem], 'remove', 1)
-    exports['rsg-inventory']:AddItem(src, toItem, 1, nil, nil, reason)
-    TriggerClientEvent('rsg-inventory:client:ItemBox', src, RSGCore.Shared.Items[toItem], 'add', 1)
+---------------------------------
+local function notify(src, msg, typ)
+    TriggerClientEvent('ox_lib:notify', src, { title = locale('notify_title'), description = msg, type = typ or 'inform' })
+end
+
+local function getUses(item)
+    return item and item.info and tonumber(item.info.uses) or 0
+end
+
+local function setUses(Player, slot, uses)
+    local items = Player.PlayerData.items
+    local item = items[slot]
+    if not item or item.name ~= Config.CanteenItem then return false end
+    item.info = item.info or {}
+    item.info.uses = uses
+    Player.Functions.SetPlayerData('items', items)
     return true
 end
 
-local function AddThirst(src, Player, amount)
-    local thirst = math.min(100, (Player.PlayerData.metadata.thirst or 0) + amount)
-    Player.Functions.SetMetaData('thirst', thirst)
-    TriggerClientEvent('hud:client:UpdateThirst', src, thirst)
+-- canteen with the fewest uses (so filling tops up the emptiest one first)
+local function getFillableCanteen(Player)
+    local best
+    for _, item in pairs(Player.PlayerData.items) do
+        if item.name == Config.CanteenItem and getUses(item) < Config.MaxUses then
+            if not best or getUses(item) < getUses(best) then
+                best = item
+            end
+        end
+    end
+    return best
 end
 
-------------------------
--- usable items
-------------------------
-local function OnUse(source, item)
-    local src = source
-    if not RSGCore.Functions.GetPlayer(src) then return end
-    local p = pending[src]
-    if p and os.time() - p.time < PENDING_TIMEOUT then return end -- already drinking
-    pending[src] = { item = item.name, time = os.time() }
-    TriggerClientEvent('rsg-canteen:client:drink', src, item.name)
+local function playerCoords(src)
+    return GetEntityCoords(GetPlayerPed(src))
 end
 
-for name in pairs(DEGRADE) do RSGCore.Functions.CreateUseableItem(name, OnUse) end
-RSGCore.Functions.CreateUseableItem('canteen0', OnUse)
-
-------------------------
--- client reports result of a use: 'refill' | 'drink' | 'cancel'
-------------------------
-RegisterNetEvent('rsg-canteen:server:finish', function(action)
-    local src = source
-    local p = pending[src]
+local function takePending(src, actionType, duration)
+    local action = pending[src]
     pending[src] = nil
-    if not p or os.time() - p.time > PENDING_TIMEOUT then return end
+    if not action or action.type ~= actionType then return nil end
+    if GetGameTimer() - action.started < duration - TIME_GRACE then return nil end
+    return action
+end
+
+---------------------------------
+-- drink
+---------------------------------
+RSGCore.Functions.CreateUseableItem(Config.CanteenItem, function(source, item)
+    local src = source
+    if pending[src] then
+        return notify(src, locale('busy'), 'error')
+    end
+    if getUses(item) <= 0 then
+        return notify(src, locale('canteen_empty'), 'error')
+    end
+    pending[src] = { type = 'drink', slot = item.slot, started = GetGameTimer() }
+    TriggerClientEvent('rsg-canteen:client:drink', src)
+end)
+
+RegisterNetEvent('rsg-canteen:server:finishDrink', function(completed)
+    local src = source
+    local action = takePending(src, 'drink', Config.DrinkTime)
+    if not completed or not action then return end
 
     local Player = RSGCore.Functions.GetPlayer(src)
     if not Player then return end
 
-    if action == 'refill' and REFILLABLE[p.item] then
-        if SwapItem(src, p.item, 'canteen100', 'canteen-refill') then
-            AddThirst(src, Player, Config.RefillThirst)
-        end
-    elseif action == 'drink' and DEGRADE[p.item] then
-        if SwapItem(src, p.item, DEGRADE[p.item], 'canteen-drink') then
-            AddThirst(src, Player, Config.DrinkAmount)
-        end
+    local item = Player.PlayerData.items[action.slot]
+    if not item or item.name ~= Config.CanteenItem then return end
+    local uses = getUses(item)
+    if uses <= 0 then
+        return notify(src, locale('canteen_empty'), 'error')
+    end
+
+    uses = uses - 1
+    setUses(Player, action.slot, uses)
+
+    local thirst = Player.PlayerData.metadata.thirst or 0
+    Player.Functions.SetMetaData('thirst', math.min(Config.MaxThirst, thirst + Config.ThirstAmount))
+
+    notify(src, locale('drank'):format(uses, Config.MaxUses), 'success')
+end)
+
+---------------------------------
+-- fill
+---------------------------------
+lib.callback.register('rsg-canteen:server:startFill', function(source, pumpCoords)
+    local src = source
+    local Player = RSGCore.Functions.GetPlayer(src)
+    if not Player or pending[src] or type(pumpCoords) ~= 'vector3' then return false end
+
+    if #(playerCoords(src) - pumpCoords) > MAX_PUMP_DIST then
+        notify(src, locale('too_far'), 'error')
+        return false
+    end
+    if not Player.Functions.GetItemByName(Config.CanteenItem) then
+        notify(src, locale('no_canteen'), 'error')
+        return false
+    end
+    if not getFillableCanteen(Player) then
+        notify(src, locale('canteens_full'), 'error')
+        return false
+    end
+
+    pending[src] = { type = 'fill', coords = pumpCoords, started = GetGameTimer() }
+    return true
+end)
+
+RegisterNetEvent('rsg-canteen:server:finishFill', function(completed)
+    local src = source
+    local action = takePending(src, 'fill', Config.FillTime)
+    if not completed or not action then return end
+
+    if #(playerCoords(src) - action.coords) > MAX_PUMP_DIST then
+        return notify(src, locale('too_far'), 'error')
+    end
+
+    local Player = RSGCore.Functions.GetPlayer(src)
+    if not Player then return end
+
+    local item = getFillableCanteen(Player)
+    if not item then
+        return notify(src, locale('canteens_full'), 'error')
+    end
+
+    if setUses(Player, item.slot, Config.MaxUses) then
+        notify(src, locale('canteen_filled'):format(Config.MaxUses), 'success')
     end
 end)
 
+---------------------------------
+-- cleanup
+---------------------------------
 AddEventHandler('playerDropped', function()
     pending[source] = nil
-end)
-
-------------------------
--- external refill (server-side only)
--- exports['rsg-canteen']:RefillCanteen(src, 'canteen25')
-------------------------
-exports('RefillCanteen', function(src, fromItem)
-    if not REFILLABLE[fromItem] or not RSGCore.Functions.GetPlayer(src) then return false end
-    return SwapItem(src, fromItem, 'canteen100', 'canteen-refill-external')
 end)

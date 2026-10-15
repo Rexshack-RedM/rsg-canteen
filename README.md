@@ -1,105 +1,41 @@
-<img width="2948" height="497" alt="rsg_framework" src="https://github.com/user-attachments/assets/638791d8-296d-4817-a596-785325c1b83a" />
+# rsg-canteen
 
-# 🥤 rsg-canteen
-**Simple canteen system for RSG Core.**
+Fill a canteen at water pumps with **ox_target** and drink from it to restore thirst.
 
-![Platform](https://img.shields.io/badge/platform-RedM-darkred)
-![License](https://img.shields.io/badge/license-GPL--3.0-green)
+## Features
+- Target `p_waterpump01x` and `p_wellpumpnbx01x` to fill your canteen (option only shows if you carry one).
+- A full canteen has **10 uses**; each drink restores **25 thirst** (capped at 100).
+- Uses are stored per canteen in the item's metadata. Filling tops up your emptiest canteen first.
+- Fill and drink animations, with a canteen prop held in hand while drinking.
+- Progress bars can be cancelled; nothing is used or filled if cancelled.
+- Server-side checks: pump distance, minimum fill/drink time, and drinking only after using the item, so the net events can't be spammed or triggered remotely.
+- Translated into 10 languages using ox_lib locales, with a fully configurable `shared/config.lua`.
 
-> Drink from tiered canteens (100/75/50/25/0) with an animation and prop, and refill them in rivers, lakes and the sea.
-> All item swaps and thirst changes are handled server-side.
+## Requirements
+- [rsg-core](https://github.com/Rexshack-RedM/rsg-core)
+- [rsg-inventory](https://github.com/Rexshack-RedM/rsg-inventory)
+- [ox_lib](https://github.com/overextended/ox_lib)
+- [ox_target](https://github.com/overextended/ox_target)
 
----
-
-## 🛠️ Dependencies
-- **rsg-core** (framework)
-- **rsg-inventory** (items)
-- **ox_lib** (locales, notifications)
-- **rsg-hud** (thirst display)
-
-**Locales included:** `en`, `de`, `el`, `es`, `fr`, `ja`, `nl`, `pl`, `pt-br`, `ro`, `it`
-**License:** GPL‑3.0
-
----
-
-## ✨ Features
-- 🔄 **Tiered items:** `canteen100` → `canteen75` → `canteen50` → `canteen25` → `canteen0`.
-- 🥤 **Drink:** using any non-empty canteen restores `Config.DrinkAmount` thirst and drops it one tier.
-- 🌊 **Refill:** standing on foot in a water zone listed in `Config.WaterTypes` and using `canteen0/25/50/75` refills it to `canteen100` and restores `Config.RefillThirst`.
-- 🚫 **Empty check:** using `canteen0` away from valid water shows a localized error.
-- 🔒 **Server authoritative:** the server records each item use and only accepts one matching result from the client, removes the old item before giving the new one, and sets thirst itself.
-- 🌍 **Multi-language** via `lib.locale()`.
-
----
-
-## ⚙️ Configuration (`shared/config.lua`)
+## Installation
+1. Place `rsg-canteen` in your resources folder.
+2. Add the item to `rsg-core/shared/items.lua`. It **must** be `unique = true` so each canteen keeps its own uses:
 ```lua
-Config.DrinkAmount  = 25  -- thirst restored when drinking
-Config.RefillThirst = 100 -- thirst restored when refilling at valid water
-
-Config.WaterTypes = {
-    { name = 'Sea of Coronado', waterhash = -247856387,  watertype = 'sea'   },
-    { name = 'San Luis River',  waterhash = -1504425495, watertype = 'river' },
-    -- ... remove an entry to block refilling there
-}
+canteen = { name = 'canteen', label = 'Canteen', weight = 500, type = 'item', image = 'canteen.png', unique = true, useable = true, shouldClose = true, description = 'A metal canteen for carrying water' },
 ```
+3. Add a `canteen.png` image to `rsg-inventory/html/images/`.
+4. Add `ensure rsg-canteen` to your server.cfg after its dependencies.
 
----
+## Configuration
+All settings are in `shared/config.lua`: item name, uses, thirst amount, timings, pump models, animations, and the prop model/offset/rotation.
 
-## 🔁 How it works
-1. Player uses a canteen item → server stores a pending use and triggers `rsg-canteen:client:drink`.
-2. Client checks water, plays the animation, then reports `refill`, `drink` or `cancel` via `rsg-canteen:server:finish`.
-3. Server validates the pending use (one per use, 30s window), swaps the item and updates thirst.
-
-### External refill (server-side export)
-```lua
--- returns true if the player had the item and it was refilled
-exports['rsg-canteen']:RefillCanteen(source, 'canteen25')
+## Languages
+Included: `en`, `de`, `el`, `es`, `fr`, `ja`, `nl`, `pl`, `pt-br`, `ro`.
+ox_lib picks the language from your server convar, e.g. in server.cfg:
 ```
-> The old `rsg-canteen:server:refillcanteen` and `givefullcanteen*` / `degradecanteen` net events were removed — they could be triggered by any client.
-
----
-
-## 🧺 Inventory Items
-Add to `rsg-core/shared/items.lua`:
-```lua
-canteen100 = { name = 'canteen100', label = 'Canteen (Full)',  weight = 200, type = 'item', image = 'canteen100.png', unique = false, useable = true, decay = 0, delete = true, shouldClose = true, description = 'A full canteen of water.' },
-canteen75  = { name = 'canteen75',  label = 'Canteen (3/4)',   weight = 200, type = 'item', image = 'canteen75.png',  unique = false, useable = true, decay = 0, delete = true, shouldClose = true, description = 'A canteen that is three-quarters full.' },
-canteen50  = { name = 'canteen50',  label = 'Canteen (Half)',  weight = 200, type = 'item', image = 'canteen50.png',  unique = false, useable = true, decay = 0, delete = true, shouldClose = true, description = 'A half-full canteen.' },
-canteen25  = { name = 'canteen25',  label = 'Canteen (1/4)',   weight = 200, type = 'item', image = 'canteen25.png',  unique = false, useable = true, decay = 0, delete = true, shouldClose = true, description = 'A canteen with a small amount of water.' },
-canteen0   = { name = 'canteen0',   label = 'Canteen (Empty)', weight = 200, type = 'item', image = 'canteen0.png',   unique = false, useable = true, decay = 0, delete = true, shouldClose = true, description = 'An empty canteen that needs refilling.' },
+setr ox:locale en
 ```
+To add a language, copy `locales/en.json` to `locales/<code>.json` and translate the values (keep the `%s` placeholders).
 
----
-
-## 📂 Installation
-1. Add `rsg-canteen` to `resources/[rsg]`.
-2. Add the items above and their images.
-3. In `server.cfg`:
-   ```cfg
-   ensure ox_lib
-   ensure rsg-core
-   ensure rsg-inventory
-   ensure rsg-canteen
-   ```
-4. Restart your server.
-
----
-
-## 🌍 Locales
-```json
-{
-  "canteen_empty_title": "Canteen Empty",
-  "canteen_empty_desc": "You need to fill up your canteen first!"
-}
-```
-
----
-
-## ☕ Support
-If you find this useful: https://buymeacoffee.com/rexshack
-
-## 💎 Credits
-- RSG / Rexshack-RedM adaptation & maintenance
-- Community contributors & translators
-- License: GPL‑3.0
+## Support
+If you enjoy this script, consider supporting development: https://buymeacoffee.com/rexshack

@@ -1,32 +1,35 @@
 fx_version 'cerulean'
 rdr3_warning 'I acknowledge that this is a prerelease build of RedM, and I am aware my resources *will* become incompatible once RedM ships.'
 game 'rdr3'
+lua54 'yes'
 
-description 'rsg-canteen'
-version '3.0.0'
+author 'Rexshack'
+description 'rsg-canteen - fill your canteen at water pumps and drink from it'
+version '3.0.1'
 
 shared_scripts {
     '@ox_lib/init.lua',
-    'shared/config.lua'
+    'shared/config.lua',
 }
 
 client_scripts {
-    'client/client.lua'
+    'client/client.lua',
 }
 
 server_scripts {
     'server/server.lua',
-    'server/versionchecker.lua'
+    'server/versionchecker.lua',
+}
+
+files {
+    'locales/*.json',
 }
 
 dependencies {
     'rsg-core',
     'rsg-inventory',
     'ox_lib',
+    'ox_target',
 }
 
-files {
-  'locales/*.json'
-}
-
-lua54 'yes'
+ox_lib 'locale'
