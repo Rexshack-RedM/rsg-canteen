@@ -164,6 +164,15 @@ RegisterNetEvent('rsg-canteen:client:drink', function()
 end)
 
 ---------------------------------
+-- thirst (validated + sent by server after a drink)
+---------------------------------
+RegisterNetEvent('rsg-canteen:client:addThirst', function(amount)
+    if GetInvokingResource() then return end
+    local thirst = (LocalPlayer.state.thirst or 0) + amount
+    TriggerEvent('hud:client:UpdateThirst', math.max(0, math.min(Config.MaxThirst, thirst)))
+end)
+
+---------------------------------
 -- cleanup
 ---------------------------------
 AddEventHandler('onResourceStop', function(res)

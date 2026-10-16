@@ -85,8 +85,8 @@ RegisterNetEvent('rsg-canteen:server:finishDrink', function(completed)
     uses = uses - 1
     setUses(Player, action.slot, uses)
 
-    local thirst = Player.PlayerData.metadata.thirst or 0
-    Player.Functions.SetMetaData('thirst', math.min(Config.MaxThirst, thirst + Config.ThirstAmount))
+    -- rsg-hud owns the live needs values client-side, so update thirst through it
+    TriggerClientEvent('rsg-canteen:client:addThirst', src, Config.ThirstAmount)
 
     notify(src, locale('drank'):format(uses, Config.MaxUses), 'success')
 end)

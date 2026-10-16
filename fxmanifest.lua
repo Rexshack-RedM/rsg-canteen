@@ -5,7 +5,7 @@ lua54 'yes'
 
 author 'Rexshack'
 description 'rsg-canteen'
-version '3.0.2'
+version '3.0.3'
 
 shared_scripts {
     '@ox_lib/init.lua',
