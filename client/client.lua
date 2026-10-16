@@ -116,27 +116,39 @@ local function fillFromWater()
     busy = false
 end
 
+-- the prompt only exists while standing in fillable water; a permanently
+-- registered (even hidden) prompt suppresses native prompts like skinning/carry
+local function createWaterPrompt()
+    if waterPrompt then return end
+    waterPrompt = PromptRegisterBegin()
+    PromptSetControlAction(waterPrompt, Config.WaterFill.Key)
+    PromptSetText(waterPrompt, VarString(10, 'LITERAL_STRING', locale('target_fill_water')))
+    PromptSetEnabled(waterPrompt, true)
+    PromptSetVisible(waterPrompt, true)
+    PromptSetHoldMode(waterPrompt, true)
+    PromptRegisterEnd(waterPrompt)
+end
+
+local function deleteWaterPrompt()
+    if not waterPrompt then return end
+    PromptDelete(waterPrompt)
+    waterPrompt = nil
+end
+
 if Config.WaterFill.Enabled then
     CreateThread(function()
-        waterPrompt = PromptRegisterBegin()
-        PromptSetControlAction(waterPrompt, Config.WaterFill.Key)
-        PromptSetText(waterPrompt, VarString(10, 'LITERAL_STRING', locale('target_fill_water')))
-        PromptSetEnabled(waterPrompt, true)
-        PromptSetVisible(waterPrompt, false)
-        PromptSetHoldMode(waterPrompt, true)
-        PromptRegisterEnd(waterPrompt)
-
         while true do
-            local show = not busy and inFillableWater() and RSGCore.Functions.HasItem(Config.CanteenItem, 1)
-            PromptSetVisible(waterPrompt, show)
-            if show then
+            if not busy and inFillableWater() and RSGCore.Functions.HasItem(Config.CanteenItem, 1) then
+                createWaterPrompt()
                 while not busy and inFillableWater() do
                     if PromptHasHoldModeCompleted(waterPrompt) then
+                        deleteWaterPrompt()
                         fillFromWater()
+                        break
                     end
                     Wait(0)
                 end
-                PromptSetVisible(waterPrompt, false)
+                deleteWaterPrompt()
             end
             Wait(Config.WaterFill.CheckEvery)
         end
@@ -179,5 +191,5 @@ AddEventHandler('onResourceStop', function(res)
     if res ~= GetCurrentResourceName() then return end
     exports.ox_target:removeModel(Config.PumpModels, 'rsg_canteen_fill')
     removeProp()
-    if waterPrompt then PromptDelete(waterPrompt) end
+    deleteWaterPrompt()
 end)
