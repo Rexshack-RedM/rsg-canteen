@@ -69,4 +69,4 @@ The server checks fill distance, minimum fill and drink time, and only accepts a
 | River fill does nothing | Stand in shallow water; check `WaterFill.Enabled` and `AllowedZones` |
 | Thirst not changing | Check your HUD handles thirst changes |
 
-Support: https://buymeacoffee.com/rexshack
+Support the Project : https://rexshack.tebex.store/
